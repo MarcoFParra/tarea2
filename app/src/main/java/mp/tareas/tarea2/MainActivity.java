@@ -36,6 +36,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import static android.os.Build.VERSION_CODES.N;
+import static java.lang.StrictMath.abs;
 
 public class MainActivity extends AppCompatActivity  {
 
@@ -51,6 +52,9 @@ public class MainActivity extends AppCompatActivity  {
     ArrayList<Reina> reinas = new ArrayList<>();
     private LinearLayout bottomSheet;
 
+    SolucionesAdapter solucionesAdapter;
+    RecyclerView recyclerView ;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,8 +69,8 @@ public class MainActivity extends AppCompatActivity  {
 
         final BottomSheetBehavior bsb = BottomSheetBehavior.from(bottomSheet);
 
-        final SolucionesAdapter solucionesAdapter = new SolucionesAdapter(this,solucions);
-        final RecyclerView recyclerView = findViewById(R.id.recycler_me);
+        solucionesAdapter = new SolucionesAdapter(this,solucions);
+        recyclerView = findViewById(R.id.recycler_me);
         recyclerView.setLayoutManager(new GridLayoutManager(this, 2,RecyclerView.HORIZONTAL,false));
         recyclerView.setAdapter(solucionesAdapter);
 
@@ -82,51 +86,8 @@ public class MainActivity extends AppCompatActivity  {
             @Override
             public void run() {
 
-                for (int column = 0; column < columns; column++) {
-                    for (int row = 0; row < rows; row++) {
-                        for (int r = 0; r < 5; r++) {
-                            if (reinas.size() == 0)
-                                reinas.add(new Reina(column,row));
-                            else
-                                reinas.add(new Reina());
-                            init(r);
-                        }
-                        if (addSolucion(reinas)) {
-                            try {
-                                tv_notif.setText("Solucion encontrada");
-                                tv_notif.setTextColor( getResources().getColor(android.R.color.holo_blue_dark));
-                                win_anim_open.setAnimationListener(new Animation.AnimationListener() {
-                                    @Override
-                                    public void onAnimationStart(Animation animation) {
+                buscar(reinas,0,6);
 
-                                    }
-
-                                    @Override
-                                    public void onAnimationEnd(Animation animation) {
-                                        tv_notif.setClickable(false);
-                                        tv_notif.startAnimation(win_anim_close);
-                                    }
-
-                                    @Override
-                                    public void onAnimationRepeat(Animation animation) {
-
-                                    }
-                                });
-                                solucionesAdapter.update(solucions);
-                                recyclerView.scrollBy(1,0);
-                                tv_notif.startAnimation(win_anim_open);
-                                Thread.sleep(300);
-
-
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            reinas.clear();
-                        } else {
-                            reinas.clear();
-                        }
-                    }
-                }
                 termino = true;
                 timer.cancel();
             }
@@ -135,146 +96,136 @@ public class MainActivity extends AppCompatActivity  {
 
     }
 
-    boolean addSolucion(ArrayList<Reina> list)
+
+    void buscar(ArrayList<Reina> reinas,int currentRow,int N)
     {
-        if (!esSolucion(list))
-            return false;
-        Solucion solucionTemp = new Solucion(list,Screenshot.takescreenshot(findViewById(R.id.tablero)));
-        for (Solucion solucion : solucions)
+        if(is_solution(reinas, N))
         {
-            if (solucion.equals(solucionTemp))
-            return false;
-
-        }
-        solucions.add(solucionTemp);
-        return true;
-    }
-
-
-
-    private static Bitmap setImage(Solucion solucion,int width,int height) {
-
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        Bitmap image = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-
-        Paint paint3 = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint3.setColor(Color.GREEN);
-        paint3.setTextAlign(Paint.Align.LEFT);
-
-
-        Canvas canvas = new Canvas(image);
-        canvas.drawCircle(width/2 , height/2,height/2 ,paint3);
-
-        int x, y;
-        for (int col = 0; col < 6; col++) {
-            for (int row = 0; row < 6; row++) {
-                x = (width / 6) * row;
-                y = (height / 6) * col;
-                if ((row % 2 == 0) == (col % 2 == 0)) {
-                    paint.setColor(Color.BLACK);
-                    //canvas.drawColor(Color.BLACK);
-                } else {
-                    paint.setColor(Color.WHITE);
-                    //canvas.drawColor(Color.WHITE);
-                }
-
-                /*for (Point point : solucion.getPuntos()) {
-                    if (point.equals(col,row))
-                    {
-                        paint.setColor(Color.RED);
-                        break;
-                    }
-                }*/
-                canvas.drawRect(new Rect(x, y, width / 6, height / 6), paint);
-            }
-        }
-
-
-
-        return image;
-    }
-
-    Boolean esSolucion(ArrayList<Reina> list)
-    {
-        for (Reina reina:list)
-        {
-            if (!reina.isPosicionCorrecta())
-                return false;
-        }
-        return true;
-    }
-
-    void init(int r) {
-
-        int columnaInicial = reinas.get(r).getPosColumna();
-        int filaInicial =  reinas.get(r).getPosFila();
-
-        for (int column = columnaInicial; column < columns; column++) {
-            for (int row = filaInicial; row < rows; row++) {
-                reinas.get(r).setPos(column, row);
-                putImages();
-                if (isValidPosition(r)) {
-                    reinas.get(r).setPosicionCorrecta(true);
-                    return;
-                }
-                else reinas.get(r).setPosicionCorrecta(false);
+            putImages();
+            solucions.add(new Solucion(reinas,Screenshot.takescreenshot(findViewById(R.id.tablero))));
                 try {
-                    Thread.sleep(30);
+                    tv_notif.setText("Solucion encontrada");
+                    tv_notif.setTextColor( getResources().getColor(android.R.color.holo_blue_dark));
+                    win_anim_open.setAnimationListener(new Animation.AnimationListener() {
+                        @Override
+                        public void onAnimationStart(Animation animation) {
+
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        @Override
+                        public void onAnimationEnd(Animation animation) {
+                            tv_notif.setClickable(false);
+                            tv_notif.startAnimation(win_anim_close);
+
+
+                        }
+
+                        @Override
+                        public void onAnimationRepeat(Animation animation) {
+
+                        }
+                    });
+                    solucionesAdapter.update(solucions);
+                    recyclerView.scrollBy(1,0);
+                    tv_notif.startAnimation(win_anim_open);
+                    Thread.sleep(100);
+
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+        }
+        else
+        {
+            // construct a vector of valid candidates
+            ArrayList<Reina> candidates = new ArrayList<>();
+            if(construct_candidates(reinas,currentRow,N,candidates))
+            {
+                for(int i=0; i < candidates.size(); ++i)
+                {
+                    // Push this in the partial solution and move further
+                    reinas.add(candidates.get(i));
+
+                    buscar(reinas,currentRow + 1, N);
+                    // If no feasible solution was found then we ought to remove this and try the next one
+
+                    reinas.remove(reinas.size()-1);
+                }
             }
+            //putImages(reinas,N);
+
         }
 
     }
 
-    boolean isValidPosition(int pos) {
+    boolean is_solution(ArrayList<Reina> reinas, int N)
+    {
+        return reinas.size() == N;
+    }
 
-        int c = 0, f = 0;
-        if (reinas.size() == 1)
-            return true;
-
-        for (int r = 0; r < reinas.size(); r++) {
-            if (r != pos) {
-
-                if (reinas.get(r).getPosColumna() == reinas.get(pos).getPosColumna())
-                    return false;
-                if (reinas.get(r).getPosFila() == reinas.get(pos).getPosFila())
-                    return false;
-
-                for (c = reinas.get(pos).getPosColumna(), f = reinas.get(pos).getPosFila();
-                     (c >= 0 || f >= 0); c--, f--) {
-                    if (reinas.get(r).getPosFila() == f && reinas.get(r).getPosColumna() == c)
-                        return false;
-                }
-
-                for (c = reinas.get(pos).getPosColumna(), f = reinas.get(pos).getPosFila();
-                     (c < columns || f >= 0); c++, f--) {
-                    if (reinas.get(r).getPosFila() == f && reinas.get(r).getPosColumna() == c)
-                        return false;
-                }
-                for (c = reinas.get(pos).getPosColumna(), f = reinas.get(pos).getPosFila();
-                     (c >= 0 || f < rows); c--, f++) {
-                    if (reinas.get(r).getPosFila() == f && reinas.get(r).getPosColumna() == c)
-                        return false;
-                }
-                for (c = reinas.get(pos).getPosColumna(), f = reinas.get(pos).getPosFila();
-                     (c < columns || f < rows); c++, f++) {
-                    if (reinas.get(r).getPosFila() == f && reinas.get(r).getPosColumna() == c)
-                        return false;
-                }
+    boolean construct_candidates( ArrayList<Reina> reinas, int row, int N, ArrayList<Reina> candidates)
+    {
+        for(int i=0; i<N; ++i)
+        {
+            putImages();
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
+            candidates.add( new Reina(row,i));
+            if(!is_safe_square(reinas,row,i,N))
+            {
+                candidates.remove( candidates.size()-1);
+            }
+        }
+        return candidates.size() > 0;
+    }
+
+    boolean is_safe_square(ArrayList<Reina> reinas, int row, int col, int N)
+    {
+        for(int i=0; i<reinas.size(); ++i)
+        {
+            if( i == row || reinas.get(i).getPosFila() == col) return false;
+            if(abs(i - row) == abs(reinas.get(i).getPosFila() - col)) return false;
         }
         return true;
     }
 
-
-    boolean isSolution()
+   /* void putImages(ArrayList<Reina> reinas, int N)
     {
-        boolean solution = false;
 
-        return solution;
+        quitImages(findViewById(android.R.id.content));
+        for(int i=0; i<N; ++i)
+        {
+            for(int j=0; j<N; ++j)
+            {
+                if(reinas.get(i) == j){
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    String tag = String.valueOf(i) + String.valueOf(j);
+
+                    ((ImageView)(findViewById(android.R.id.content)).findViewWithTag(tag)).
+                            setImageDrawable(getResources().getDrawable(R.drawable.ic_stars_24px));
+                }
+            }
+        }
     }
+    */
+
+
+
+
+
+
+
 
 
     void putImages()
@@ -288,7 +239,9 @@ public class MainActivity extends AppCompatActivity  {
                         setImageDrawable(getResources().getDrawable(R.drawable.ic_stars_24px));
 
             }
-        }catch (Exception ex){}
+        }catch (Exception ex){
+            //Toast.makeText(this,ex.toString(),Toast.LENGTH_SHORT).show();
+        }
     }
 
     public void quitImages(View v) {
